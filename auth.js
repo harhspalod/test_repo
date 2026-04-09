@@ -147,4 +147,4 @@ async function register(username, password, email) {
   }
 }
 
-module.exports = { login, resetPassword, register };
+module.exports = { login, resetPassword, register };// trigger proper review Thu Apr  9 08:38:35 AM IST 2026
