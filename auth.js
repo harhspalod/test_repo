@@ -3,6 +3,7 @@ const db = require('./db');
 const bcrypt = require('bcryptjs');
 const Joi = require('joi');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
 // Password hashing function using stronger algorithm
 function hashPassword(password) {
@@ -12,7 +13,12 @@ function hashPassword(password) {
 
 // Password verification function
 function verifyPassword(plainPassword, hashedPassword) {
-  return bcrypt.compare(plainPassword, hashedPassword);
+  return bcrypt.compareSync(plainPassword, hashedPassword);
+}
+
+// Generate password reset token
+function generatePasswordResetToken() {
+  return crypto.randomBytes(32).toString('hex');
 }
 
 async function login(username, password) {
@@ -30,7 +36,7 @@ async function login(username, password) {
     const values = [username];
     const user = await db.query(query, values);
 
-    if (user && user.rows && user.rows.length > 0 && await verifyPassword(password, user.rows[0].password)) {
+    if (user && user.rows && user.rows.length > 0 && verifyPassword(password, user.rows[0].password)) {
       // Using environment variables for API keys
       const API_KEY = process.env.API_KEY;
 
@@ -64,26 +70,57 @@ async function resetPassword(email) {
     const user = await db.query(query, values);
 
     if (user && user.rows && user.rows.length > 0) {
-      const newPassword = crypto.randomBytes(32).toString('hex').slice(0, 12);
-      const hashedPassword = hashPassword(newPassword);
-
-      const updateQuery = "UPDATE users SET password = $1 WHERE email = $2";
-      const updateValues = [hashedPassword, email];
+      const passwordResetToken = generatePasswordResetToken();
+      const updateQuery = "UPDATE users SET password_reset_token = $1, password_reset_expiration = NOW() + INTERVAL '1 hour' WHERE email = $2";
+      const updateValues = [passwordResetToken, email];
       await db.query(updateQuery, updateValues);
 
-      // Sending password reset link via email
-      sendEmail(email, `Reset your password: ${generatePasswordResetLink(user.rows[0].id)}`);
+      // Send password reset link via email
+      const transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_HOST,
+        port: process.env.EMAIL_PORT,
+        secure: process.env.EMAIL_SECURE,
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASSWORD,
+        },
+      });
+
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'Reset your password',
+        text: `Reset your password: https://example.com/reset-password/${user.rows[0].id}/${passwordResetToken}`,
+      };
+
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          throw new Error(error.message);
+        }
+      });
     }
   } catch (error) {
     throw new Error(error.message);
   }
 }
 
-// Password reset link generation function
-function generatePasswordResetLink(userId) {
-  const token = crypto.randomBytes(32).toString('hex');
-  const link = `https://example.com/reset-password/${userId}/${token}`;
-  return link;
+async function resetPasswordWithToken(userId, token, newPassword) {
+  try {
+    const query = "SELECT * FROM users WHERE id = $1 AND password_reset_token = $2 AND password_reset_expiration > NOW()";
+    const values = [userId, token];
+    const user = await db.query(query, values);
+
+    if (user && user.rows && user.rows.length > 0) {
+      const hashedPassword = hashPassword(newPassword);
+      const updateQuery = "UPDATE users SET password = $1, password_reset_token = NULL, password_reset_expiration = NULL WHERE id = $2";
+      const updateValues = [hashedPassword, userId];
+      await db.query(updateQuery, updateValues);
+    } else {
+      throw new Error('Invalid token or token has expired');
+    }
+  } catch (error) {
+    throw new Error(error.message);
+  }
 }
 
 // User registration function
@@ -108,4 +145,4 @@ async function register(username, password, email) {
   }
 }
 
-module.exports = { login, resetPassword, register };
+module.exports = { login, resetPassword, register, resetPasswordWithToken };
