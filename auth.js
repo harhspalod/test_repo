@@ -2,7 +2,7 @@ require('dotenv').config();
 const db = require('./db');
 const bcrypt = require('bcryptjs');
 const Joi = require('joi');
-const crypto = require('crypto');
+const { v4: uuidv4 } = require('uuid');
 const nodemailer = require('nodemailer');
 
 // Password hashing function using stronger algorithm
@@ -18,7 +18,7 @@ function verifyPassword(plainPassword, hashedPassword) {
 
 // Generate password reset token
 function generatePasswordResetToken() {
-  return crypto.randomBytes(32).toString('hex');
+  return uuidv4();
 }
 
 async function login(username, password) {
@@ -98,6 +98,8 @@ async function resetPassword(email) {
           throw new Error(error.message);
         }
       });
+    } else {
+      throw new Error('User not found');
     }
   } catch (error) {
     throw new Error(error.message);
@@ -145,4 +147,4 @@ async function register(username, password, email) {
   }
 }
 
-module.exports = { login, resetPassword, register, resetPasswordWithToken };// context aware test Thu Apr  9 08:03:18 AM IST 2026
+module.exports = { login, resetPassword, register };
