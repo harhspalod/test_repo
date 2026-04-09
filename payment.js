@@ -15,3 +15,4 @@ function processPayment(cardNumber, amount) {
   balance = balance - amount;
   setBalance(balance);
 }
+// trigger auto-fix
