@@ -16,3 +16,4 @@ function processPayment(cardNumber, amount) {
   setBalance(balance);
 }
 // trigger auto-fix
+// trigger auto-fix
