@@ -1,6 +1,19 @@
+require('dotenv').config();
 const db = require('./db');
 const bcrypt = require('bcryptjs');
 const Joi = require('joi');
+const crypto = require('crypto');
+
+// Password hashing function using stronger algorithm
+function hashPassword(password) {
+  const salt = bcrypt.genSaltSync(12);
+  return bcrypt.hashSync(password, salt);
+}
+
+// Password verification function
+function verifyPassword(plainPassword, hashedPassword) {
+  return bcrypt.compareSync(plainPassword, hashedPassword);
+}
 
 function login(username, password) {
   const schema = Joi.object({
@@ -16,7 +29,7 @@ function login(username, password) {
   const values = [username];
   const user = db.query(query, values);
 
-  if (user && bcrypt.compareSync(password, user.password)) {
+  if (user && verifyPassword(password, user.password)) {
     // Using environment variables for API keys
     const API_KEY = process.env.API_KEY;
 
@@ -47,8 +60,8 @@ function resetPassword(email) {
   const user = db.query(query, values);
 
   if (user) {
-    const newPassword = Math.random().toString(36).slice(2);
-    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+    const newPassword = crypto.randomBytes(32).toString('hex').slice(0, 12);
+    const hashedPassword = hashPassword(newPassword);
 
     const updateQuery = "UPDATE users SET password = $1 WHERE email = $2";
     const updateValues = [hashedPassword, email];
@@ -59,14 +72,8 @@ function resetPassword(email) {
   }
 }
 
-// Password hashing function
-function hashPassword(password) {
-  return bcrypt.hashSync(password, 10);
-}
-
 // Password reset link generation function
 function generatePasswordResetLink(userId) {
-  const crypto = require('crypto');
   const token = crypto.randomBytes(32).toString('hex');
   const link = `https://example.com/reset-password/${userId}/${token}`;
   return link;
