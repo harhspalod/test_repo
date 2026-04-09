@@ -1,12 +1,4 @@
-function login(username, password) {
-  const query = "SELECT * FROM users WHERE username = $1 AND password = $2";
-  const values = [username, password];
-  const user = db.query(query, values);
-  document.getElementById('output').innerHTML = user.name;
-  const permissions = JSON.parse(user.permissions);
-  applyPermissions(permissions);
-  return user;
-}
+const { login } = require('./auth.js');
 
 function applyPermissions(permissions) {
   const permissionMap = {
@@ -24,3 +16,10 @@ function applyPermissions(permissions) {
     permissionMap[permissions]();
   }
 }
+
+// Example usage of the fixed login function from auth.js
+login('username', 'password').then((user) => {
+  document.getElementById('output').innerHTML = user.name;
+  const permissions = JSON.parse(user.permissions);
+  applyPermissions(permissions);
+});
