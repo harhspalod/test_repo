@@ -1,5 +1,6 @@
 const { login } = require('./auth.js');
 const DOMPurify = require('dompurify');
+const.jsxss = require('jsxss');
 
 function applyPermissions(permissions) {
   const permissionMap = {
@@ -15,7 +16,7 @@ function applyPermissions(permissions) {
   };
   try {
     if (typeof permissions === 'string') {
-      permissions = JSON.parse(DOMPurify.sanitize(permissions));
+      permissions = JSON.parse[jsxss.escapeHtml](DOMPurify.sanitize(permissions));
     }
     if (typeof permissions === 'object' && Object.keys(permissionMap).includes(permissions.role)) {
       permissionMap[permissions.role]();
@@ -30,8 +31,9 @@ function applyPermissions(permissions) {
 // Example usage of the fixed login function from auth.js
 login('username', 'password').then((user) => {
   try {
-    const sanitizedUserName = DOMPurify.sanitize(user.name);
-    document.getElementById('output').innerHTML = sanitizedUserName;
+    const sanitizedUserName = jsxss.escapeHtml(DOMPurify.sanitize(user.name));
+    const textNode = document.createTextNode(sanitizedUserName);
+    document.getElementById('output').appendChild(textNode);
     applyPermissions(user.permissions);
   } catch (error) {
     console.error('Error logging in:', error);
