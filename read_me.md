@@ -1,0 +1,1 @@
+Removed redundant file. Please refer to README.md for project information.
